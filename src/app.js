@@ -1,10 +1,15 @@
+require("dotenv").config();
 const express = require("express");
+const bcrypt = require("bcryptjs");
+const cookieParser = require("cookie-parser");
+
 const app = express();
 
 require("./conn/connection");
 const User = require("./models/user");
 
 app.use(express.json())
+app.use(cookieParser())
 
 app.get("/",(req,res)=>{
     res.send("hello world");
@@ -18,8 +23,15 @@ app.post("/signup", async (req,res)=>{
         const userCPasswd = newUser.confirmpassword;
 
         if(userPasswd === userCPasswd){
-           await newUser.save();
-           res.status(201).send(`New user created successfully : ${newUser}`)
+
+            const token = await newUser.generateAuthToken();
+            // await newUser.save();
+            res.cookie("jwt",token,{
+                expires : new Date(Date.now() + 30000),
+                httpOnly:true
+            })
+
+            res.status(201).send(`New user created successfully : ${newUser}`)
         } else {
             res.status(400).send("Password and confirm Password does not match. Cannot create User.")
         }
@@ -35,10 +47,15 @@ app.post("/signup", async (req,res)=>{
 app.post("/login", async (req,res)=>{
     const user = await User.findOne({username:req.body.username});
 
-    if(user){
+    if(await bcrypt.compare(req.body.password , user.password )){
+        const token = await user.generateAuthToken();
+        res.cookie("jwt",token,{
+            expires : new Date(Date.now() + 30000),
+            httpOnly:true
+        })
         res.status(200).send(user);
     }else{
-        res.status(400).send("user does not exist");
+        res.status(400).send("Invalid Credentials");
     }
 })
 
