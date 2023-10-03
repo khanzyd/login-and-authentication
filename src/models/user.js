@@ -47,11 +47,13 @@ userSchema.methods.generateAuthToken = async function(){
 userSchema.pre("save", async function(next){
 
     try {
-        const encrypt = await bcrypt.hash(this.password,10);
-        this.password = encrypt;
-        this.confirmpassword = encrypt;
-    
-        next();
+        if(this.isModified(this.password)){
+            const encrypt = await bcrypt.hash(this.password,10);
+            this.password = encrypt;
+            this.confirmpassword = encrypt;
+        
+            next();
+        }
     } catch (e) {
         console.log(e);
         // next();

@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const cookieParser = require("cookie-parser");
+const auth = require("./middleware/auth");
 
 const app = express();
 
@@ -13,6 +14,10 @@ app.use(cookieParser())
 
 app.get("/",(req,res)=>{
     res.send("hello world");
+})
+
+app.get("/secretpage", auth , (req,res)=>{
+    res.status(200).send(`You are an authorized user ${req.username}`)
 })
 
 app.post("/signup", async (req,res)=>{
@@ -27,7 +32,7 @@ app.post("/signup", async (req,res)=>{
             const token = await newUser.generateAuthToken();
             // await newUser.save();
             res.cookie("jwt",token,{
-                expires : new Date(Date.now() + 30000),
+                expires : new Date(Date.now() + 180000),
                 httpOnly:true
             })
 
@@ -50,13 +55,21 @@ app.post("/login", async (req,res)=>{
     if(await bcrypt.compare(req.body.password , user.password )){
         const token = await user.generateAuthToken();
         res.cookie("jwt",token,{
-            expires : new Date(Date.now() + 30000),
+            expires : new Date(Date.now() + 180000),
             httpOnly:true
         })
         res.status(200).send(user);
     }else{
         res.status(400).send("Invalid Credentials");
     }
+})
+
+app.post("/logout", auth , async (req,res)=>{
+
+    const user = await User.findOne({_id:req.user._id})
+    user.tokens = user.tokens.filter((token)=> token.token != req.cookies.jwt);
+
+    res.status(200).send(req.user)
 })
 
 
